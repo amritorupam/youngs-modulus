@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Physics Lab: Determination of Young's Modulus</title>
+    <style>
+        :root {
+            --primary: #1a365d;
+            --secondary: #2b6cb0;
+            --accent: #e53e3e;
+            --bg: #f7fafc;
+            --panel: #ffffff;
+            --text: #2d3748;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 { font-size: 1.8rem; margin-bottom: 5px; }
+        p.subtitle { font-size: 0.95rem; opacity: 0.9; }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1024px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--panel);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 5px;
+        }
+
+        /* Simulator Canvas Display */
+        .canvas-container {
+            position: relative;
+            background: #edf2f7;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #cbd5e0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #ffffff;
+        }
+
+        /* Controls styling */
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        select, input[type="range"], button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #cbd5e0;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        select:focus { border-color: var(--secondary); }
+
+        .btn-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #2b6cb0; }
+        button:disabled { background: #cbd5e0; cursor: not-allowed; }
+
+        button.danger { background: var(--accent); }
+        button.danger:hover { background: #c53030; }
+
+        /* Readout Gauge Indicators */
+        .readouts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .gauge {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .gauge-val {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-top: 5px;
+        }
+
+        .gauge-unit { font-size: 0.75rem; color: #718096; }
+
+        /* Experimental Data Tables */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        th {
+            background-color: #f7fafc;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) { background-color: #fcfdfd; }
+
+        .formula-box {
+            background: #ebf8ff;
+            border-left: 4px solid var(--secondary);
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Young's Modulus of Elasticity Virtual Lab</h1>
+        <p class="subtitle">Method: Non-Uniform Bending (Flexure) of a Metallic Beam supported on Two Knife-Edges</p>
+    </header>
+
+    <div class="container">
+        <div class="main-panel">
+            <div class="card">
+                <h2>Experimental Setup Animation Workspace</h2>
+                <div class="canvas-container">
+                    <canvas id="labCanvas" width="800" height="380"></canvas>
+                </div>
+                
+                <div class="readouts">
+                    <div class="gauge">
+                        <label>Current Total Load</label>
+                        <div class="gauge-val" id="readoutMass">0.00</div>
+                        <div class="gauge-unit">kg (including hanger)</div>
+                    </div>
+                    <div class="gauge">
+                        <label>Microscope Scale</label>
+                        <div class="gauge-val" id="readoutMicroscope">4.500</div>
+                        <div class="gauge-unit">cm (Vertical Position)</div>
+                    </div>
+                    <div class="gauge">
+                        <label>True Deflection (l)</label>
+                        <div class="gauge-val" id="readoutDeflection">0.000</div>
+                        <div class="gauge-unit">cm (Beam Central Bow)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Recorded Experimental Data Log (Table 2)</h2>
+                <p style="font-size: 0.85rem; color:#718096; margin-bottom:10px;">
+                    *Log data systematically for both loading cycles to accurately rule out material hysteresis loops.
+                </p>
+                <div class="table-responsive">
+                    <table id="observationTable">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Obs No.</th>
+                                <th rowspan="2">Load (kg)</th>
+                                <th colspan="2">Microscope Scale Reading (cm)</th>
+                                <th rowspan="2">Mean Reading (cm)</th>
+                                <th rowspan="2">Depression l (cm)</th>
+                            </tr>
+                            <tr>
+                                <th>Increasing Load</th>
+                                <th>Decreasing Load</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="card" style="margin-bottom: 20px;">
+                <h2>Theoretical Reference</h2>
+                <div class="formula-box">
+                    <strong>Working Formula:</strong><br>
+                    <div style="text-align: center; margin: 8px 0; font-weight: bold; font-size:1.05rem;">
+                        Y = (g &middot; L&sup3; &middot; m) / (4 &middot; b &middot; d&sup3; &middot; l)
+                    </div>
+                    Where:<br>
+                    • <b>g</b> = 9.81 m/s&sup2; (981 cm/s&sup2;)<br>
+                    • <b>L</b> = Knife-edge gap spacing<br>
+                    • <b>b</b> = Breadth of the bar<br>
+                    • <b>d</b> = Depth of the bar<br>
+                    • <b>l</b> = Mean depression produced
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Bar Configuration</h2>
+                <p style="font-size:0.8rem; color:#718096; margin-bottom:12px;">Intrinsic physical dimensions are fixed for realistic material testing constraints.</p>
+                
+                <div class="control-group">
+                    <label for="materialSelect">Select Specimen Material</label>
+                    <select id="materialSelect" onchange="changeMaterial()">
+                        <option value="steel">Structural Mild Steel (Y ≈ 2.0x10¹¹ N/m²)</option>
+                        <option value="brass">Industrial Yellow Brass (Y ≈ 1.0x10¹¹ N/m²)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Bar Breadth (b): <span id="valB" style="color:var(--secondary); font-weight:bold;">2.50</span> cm</label>
+                    <input type="text" disabled value="2.50 cm" style="padding:8px; background:#edf2f7; width:100%; border-radius:4px; border:1px solid #cbd5e0;">
+                </div>
+
+                <div class="control-group">
+                    <label>Bar Thickness/Depth (d): <span id="valD" style="color:var(--secondary); font-weight:bold;">0.50</span> cm</label>
+                    <input type="text" disabled value="0.50 cm" style="padding:8px; background:#edf2f7; width:100%; border-radius:4px; border:1px solid #cbd5e0;">
+                </div>
+
+                <div class="control-group">
+                    <label>Span Distance (L): <span id="valL" style="color:var(--secondary); font-weight:bold;">70.0</span> cm</label>
+                    <input type="text" disabled value="70.00 cm" style="padding:8px; background:#edf2f7; width:100%; border-radius:4px; border:1px solid #cbd5e0;">
+                </div>
+
+                <h2 style="margin-top:25px;">Load Manipulation</h2>
+                <div class="control-group">
+                    <label>Add Slotted Mass Unit (Step: 0.5 kg)</label>
+                    <div style="font-size:0.85rem; margin-bottom:5px; color:#4a5568;">Safe Operational Bound: 0.0 to 3.5 kg</div>
+                    <div class="btn-panel">
+                        <button type="button" onclick="adjustLoad(0.5)">+ 0.5 kg</button>
+                        <button type="button" class="danger" onclick="adjustLoad(-0.5)">- 0.5 kg</button>
+                    </div>
+                </div>
+
+                <div class="btn-panel" style="grid-template-columns: 1fr; margin-top:20px;">
+                    <button id="logIncBtn" onclick="logData('increasing')">Log Increasing Point</button>
+                    <button id="logDecBtn" onclick="logData('decreasing')" style="background:#4a5568;">Log Decreasing Point</button>
+                    <button class="danger" onclick="resetExperiment()" style="background:#718096; margin-top:5px;">Clear Log & Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Physics Consts Setup
+        const g = 981.0; // cm/s^2
+        const L = 70.0;  // Support length in cm
+        const b = 2.50;  // Breadth in cm
+        const d = 0.50;  // Depth in cm
+
+        // Constants of materials in CGS units (dyne/cm^2)
+        const materials = {
+            steel: { youngs: 2.0e12, label: "Steel" },
+            brass: { youngs: 1.0e12, label: "Brass" }
+        };
+
+        let currentMaterial = 'steel';
+        let currentMassKG = 0.0; // Dynamic load applied
+        
+        // Data tracker for the matrix table array records
+        let loggedData = {
+            0.0: { inc: null, dec: null },
+            0.5: { inc: null, dec: null },
+            1.0: { inc: null, dec: null },
+            1.5: { inc: null, dec: null },
+            2.0: { inc: null, dec: null },
+            2.5: { inc: null, dec: null },
+            3.0: { inc: null, dec: null },
+            3.5: { inc: null, dec: null }
+        };
+
+        // Reference baseline pointer coordinate for Travelling Microscope (unloaded alignment height)
+        const baseMicroscopeReading = 4.500; 
+
+        const canvas = document.getElementById('labCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function getCalculatedDepression(m_kg) {
+            // Convert mass to grams
+            let m_g = m_kg * 1000.0;
+            let Y = materials[currentMaterial].youngs;
+            // depression l = (g * L^3 * m) / (4 * b * d^3 * Y)
+            let depression = (g * Math.pow(L, 3) * m_g) / (4.0 * b * Math.pow(d, 3) * Y);
+            return depression; // Returns true mathematical value in cm
+        }
+
+        function updateUI() {
+            let l_cm = getCalculatedDepression(currentMassKG);
+            let microscopePos = baseMicroscopeReading - l_cm; // Pointer moves lower as weight depresses bar
+
+            document.getElementById('readoutMass').innerText = currentMassKG.toFixed(2);
+            document.getElementById('readoutMicroscope').innerText = microscopePos.toFixed(3);
+            document.getElementById('readoutDeflection').innerText = l_cm.toFixed(3);
+
+            renderSimulation(l_cm);
+        }
+
+        function adjustLoad(step) {
+            let target = currentMassKG + step;
+            // Boundaries check (Strict protection limits: 0kg to 3.5kg)
+            if (target >= 0.0 && target <= 3.5) {
+                currentMassKG = target;
+                updateUI();
+            }
+        }
+
+        function changeMaterial() {
+            currentMaterial = document.getElementById('materialSelect').value;
+            updateUI();
+            // Clear calculations columns since intrinsic variables altered properties
+            for (let m in loggedData) {
+                loggedData[m].inc = null;
+                loggedData[m].dec = null;
+            }
+            renderTable();
+        }
+
+        function logData(direction) {
+            let l_cm = getCalculatedDepression(currentMassKG);
+            let microscopePos = baseMicroscopeReading - l_cm;
+
+            if (direction === 'increasing') {
+                loggedData[currentMassKG].inc = microscopePos;
+            } else {
+                loggedData[currentMassKG].dec = microscopePos;
+            }
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.querySelector('#observationTable tbody');
+            tbody.innerHTML = '';
+            
+            let index = 1;
+            let targetMasses = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
+            
+            targetMasses.forEach(m => {
+                let rowData = loggedData[m];
+                let incStr = rowData.inc !== null ? rowData.inc.toFixed(3) : '-';
+                let decStr = rowData.dec !== null ? rowData.dec.toFixed(3) : '-';
+                
+                let meanStr = '-';
+                let depressionStr = '-';
+                
+                if (rowData.inc !== null && rowData.dec !== null) {
+                    let mean = (rowData.inc + rowData.dec) / 2;
+                    meanStr = mean.toFixed(3);
+                    // Depression is relative back to baseline 0.0 initial load mean height
+                    let zeroMean = baseMicroscopeReading; 
+                    if(loggedData[0.0].inc !== null && loggedData[0.0].dec !== null) {
+                        zeroMean = (loggedData[0.0].inc + loggedData[0.0].dec) / 2;
+                    }
+                    depressionStr = Math.abs(zeroMean - mean).toFixed(3);
+                }
+
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index++}</td>
+                    <td><b>${m.toFixed(1)}</b></td>
+                    <td>${incStr}</td>
+                    <td>${decStr}</td>
+                    <td>${meanStr}</td>
+                    <td style="color:var(--secondary); font-weight:bold;">${depressionStr}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function resetExperiment() {
+            currentMassKG = 0.0;
+            for (let m in loggedData) {
+                loggedData[m].inc = null;
+                loggedData[m].dec = null;
+            }
+            updateUI();
+            renderTable();
+        }
+
+        function renderSimulation(depression) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Graphical exaggeration factor so millimeter scales display elegantly on UI monitors
+            const scaleFactor = 45.0; 
+            let visualDepression = depression * scaleFactor;
+
+            // Draw Background Grids
+            ctx.strokeStyle = "#f0f0f0";
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for(let j=0; j<canvas.height; j+=40) {
+                ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke();
+            }
+
+            // Draw Heavy Technical Lab Table Stand Base
+            ctx.fillStyle = "#4a5568";
+            ctx.fillRect(50, 300, 700, 25);
+            ctx.fillRect(100, 325, 60, 55);
+            ctx.fillRect(640, 325, 60, 55);
+
+            // Position markers for Support Pillars (Knife Edges)
+            let leftX = 180;
+            let rightX = 620;
+            let midX = (leftX + rightX) / 2;
+            let neutralY = 200; 
+
+            // Draw Rigid Metallic Supporting Knife-Edges (Triangles)
+            ctx.fillStyle = "#718096";
+            // Left Triangle
+            ctx.beginPath();
+            ctx.moveTo(leftX - 15, 300);
+            ctx.lineTo(leftX + 15, 300);
+            ctx.lineTo(leftX, neutralY);
+            ctx.closePath(); ctx.fill();
+            // Right Triangle
+            ctx.beginPath();
+            ctx.moveTo(rightX - 15, 300);
+            ctx.lineTo(rightX + 15, 300);
+            ctx.lineTo(rightX, neutralY);
+            ctx.closePath(); ctx.fill();
+
+            // Draw Flexible Structural Test Bar (Elastic Curve modeled via Quadratic Bezier Approximation)
+            ctx.strokeStyle = currentMaterial === 'steel' ? "#718096" : "#ecc94b";
+            ctx.lineWidth = 12;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(100, neutralY);
+            // Quadratic Bezier curve pulling down from center coordinate nexus point
+            ctx.quadraticCurveTo(midX, neutralY + (visualDepression * 2), 700, neutralY);
+            ctx.stroke();
+
+            // Center Hook Hanger Apparatus Assembly
+            let centerBarY = neutralY + visualDepression;
+            ctx.strokeStyle = "#1a202c";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            // Hanger stem Loop
+            ctx.arc(midX, centerBarY + 12, 8, 0, Math.PI * 2);
+            ctx.moveTo(midX, centerBarY + 20);
+            ctx.lineTo(midX, centerBarY + 100); // Vertical stem hanger rod
+            ctx.stroke();
+
+            // Draw Suspended Slotted Metallic Calibration Weights Block Stack
+            let numWeights = Math.floor(currentMassKG / 0.5);
+            ctx.fillStyle = "#2d3748";
+            let startWeightY = centerBarY + 90;
+            for(let w=0; w<numWeights; w++) {
+                ctx.fillStyle = w % 2 === 0 ? "#4a5568" : "#2d3748";
+                // Stack sheets vertically upwards
+                ctx.fillRect(midX - 30, startWeightY - (w * 12), 60, 10);
+                // Slotted weight identity line gap cut
+                ctx.clearRect(midX - 4, startWeightY - (w * 12) - 1, 8, 12);
+            }
+
+            // Draw Travelling Microscope Focus Point Indicator Grid Overlay
+            ctx.strokeStyle = "rgba(229, 62, 62, 0.8)";
+            ctx.lineWidth = 1.5;
+            let scopeTargetY = neutralY + visualDepression;
+            
+            // Reticle Target Box representation outline
+            ctx.beginPath();
+            ctx.arc(midX, scopeTargetY, 18, 0, Math.PI*2);
+            ctx.stroke();
+            // Crosshairs line axis markers
+            ctx.beginPath();
+            ctx.moveTo(midX - 30, scopeTargetY); ctx.lineTo(midX + 30, scopeTargetY);
+            ctx.moveTo(midX, scopeTargetY - 30); ctx.lineTo(midX, scopeTargetY + 30);
+            ctx.stroke();
+
+            // Labels text info display overlaying canvas metrics elements
+            ctx.fillStyle = varText = "#1a365d";
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText("Knife Edge N1", leftX - 40, 315);
+            ctx.fillText("Knife Edge N2", rightX - 40, 315);
+            ctx.fillText(`Specimen Bar (${materials[currentMaterial].label})`, 110, 175);
+            
+            ctx.fillStyle = "#e53e3e";
+            ctx.fillText("Microscope Crosshair Target Alignment Check", midX + 35, scopeTargetY + 4);
+        }
+
+        // Initialize execution setup loop on layout build
+        updateUI();
+        renderTable();
+    </script>
+</body>
+</html>
