@@ -1,3 +1,7 @@
+![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![HTML](https://img.shields.io/badge/Language-HTML-orange.svg)
+![Physics](https://img.shields.io/badge/Subject-Physics-blue.svg)
+![Educational](https://img.shields.io/badge/Purpose-Educational-green.svg)
 # 📐 Determination of Young's Modulus by Flexure Method
 
 ![Experimental Setup](sddefault.jpg)
